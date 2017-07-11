@@ -99,7 +99,7 @@ class pm_paymaster extends PaymentRoot
 
             $fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"] = $product->product_name;
             $fields["LMI_SHOPPINGCART.ITEM[{$key}].QTY"] = $product->product_quantity;
-            $fields["LMI_SHOPPINGCART.ITEM[{$key}].PRICE"] = $product->product_item_price;
+            $fields["LMI_SHOPPINGCART.ITEM[{$key}].PRICE"] = number_format($product->product_item_price,2,'.','');
             $fields["LMI_SHOPPINGCART.ITEM[{$key}].TAX"] = $tax;
         }
 
