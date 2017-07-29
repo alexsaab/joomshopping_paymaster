@@ -108,8 +108,8 @@ class pm_paymaster extends PaymentRoot
 
         if ($order->order_shipping > 0) {
             $key++;
-            if (isset($order->quote['rate']) && ($order->quote['rate'] > 0)) {
-                $fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"] = "Доставка заказа № " . $order->order_id;
+            if (isset($order->order_shipping) && ($order->order_shipping > 0)) {
+                $fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"] = iconv("windows-1251","utf-8","Доставка заказа № " . $order->order_id);
                 $fields["LMI_SHOPPINGCART.ITEM[{$key}].QTY"] = 1;
                 $fields["LMI_SHOPPINGCART.ITEM[{$key}].PRICE"] = number_format((float)$order->order_shipping, 2, '.', '');
                 $fields["LMI_SHOPPINGCART.ITEM[{$key}].TAX"] = $pmconfigs['paymaster_vat_delivery'];
