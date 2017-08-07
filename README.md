@@ -1,8 +1,15 @@
 **Настройка модуля оплаты с Joopshopping и PayMaster (с онлайн кассой)**
 
 Тип подписи выставляем в настройках скрипта, такую же подпись делам и интерфейсе мерчанта Paymaster. НДС берется из продуктов: 18% или 10% или вообще без НДС.
+В интерфейса мерчанта PayMaster выставляем:
 
-Payment notification (POST): http://вашдомен/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass=pm_paymaster
+Payment notification (POST): http://вашдомен/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass=pm_paymaster&no_lang=1
+
+Success redirect (POST):
+http://вашдомен/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass=pm_paymaster
+
+Failure redirect (POST):
+http://вашдомен/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass=pm_paymaster
 
 Разрешена замена URL: Да
 
