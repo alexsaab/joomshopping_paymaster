@@ -112,9 +112,9 @@ class pm_paymaster extends PaymentRoot
 			'LMI_PAYMENT_NO'     => $order->order_number,
 			'LMI_MERCHANT_ID'    => $pmconfigs['paymaster_merchant_id'],
 			'LMI_CURRENCY'       => $order->currency_code_iso,
-//            'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass='.$pm_method->payment_class,
-//            'LMI_SUCCESS_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=success&js_paymentclass='.$pm_method->payment_class,
-//            'LMI_FAILURE_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass='.$pm_method->payment_class,
+            'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass='.$pm_method->payment_class.'&no_lang=1',
+            'LMI_SUCCESS_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass='.$pm_method->payment_class,
+            'LMI_FAILURE_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass='.$pm_method->payment_class,
 			'SIGN'               => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
 		];
 
@@ -166,13 +166,12 @@ class pm_paymaster extends PaymentRoot
 			$form .= '<input type="hidden" name="' . $key . '" value="' . $value . '">' . PHP_EOL;
 		}
 
+
 		$form .= '</form>
     <script type="text/javascript">
       document.paymaster.submit();
     </script>
     ';
-
-		$this->logF(implode(' | ', $fields));
 
 		echo $form;
 		die;
@@ -189,7 +188,6 @@ class pm_paymaster extends PaymentRoot
 	 */
 	function checkTransaction($pmconfigs, $order, $act)
 	{
-		$this->logF(implode(' | ', $_POST));
 
 		if ($_SERVER["REQUEST_METHOD"] == "POST" && $act == 'notify')
 		{
@@ -307,7 +305,8 @@ class pm_paymaster extends PaymentRoot
 
 
 	/**
-	 * Логирование в файл
+	 * Логирование в файл для отладки, на дурацкой настройке Joomla тут ничего не
+	 * работало
 	 *
 	 * @param $text
 	 *
@@ -320,6 +319,5 @@ class pm_paymaster extends PaymentRoot
 		fwrite($f, date('Y-m-d H:i:s') . " " . $text . "\r\n");
 		fclose($f);
 	}
-
 
 }
