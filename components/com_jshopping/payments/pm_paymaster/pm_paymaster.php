@@ -99,27 +99,29 @@ class pm_paymaster extends PaymentRoot
 	 */
 	function showEndForm($pmconfigs, $order)
 	{
-		$pm_method = $this->getPmMethod();
 
+		$product = $products2 = array();
+
+		$pm_method = $this->getPmMethod();
 
 		$url = (((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
 
 		$amount = number_format((float) $order->order_total, 2, '.', '');
 
 		$fields = [
-			'LMI_PAYMENT_AMOUNT' => $amount,
-			'LMI_PAYMENT_DESC'   => $pmconfigs['paymaster_payment_detail'] . $order->order_number,
-			'LMI_PAYMENT_NO'     => $order->order_number,
-			'LMI_MERCHANT_ID'    => $pmconfigs['paymaster_merchant_id'],
-			'LMI_CURRENCY'       => $order->currency_code_iso,
-            'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass='.$pm_method->payment_class.'&no_lang=1',
-            'LMI_SUCCESS_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass='.$pm_method->payment_class,
-            'LMI_FAILURE_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass='.$pm_method->payment_class,
-			'SIGN'               => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
+			'LMI_PAYMENT_AMOUNT'           => $amount,
+			'LMI_PAYMENT_DESC'             => $pmconfigs['paymaster_payment_detail'] . $order->order_number,
+			'LMI_PAYMENT_NO'               => $order->order_number,
+			'LMI_MERCHANT_ID'              => $pmconfigs['paymaster_merchant_id'],
+			'LMI_CURRENCY'                 => $order->currency_code_iso,
+			'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass=' . $pm_method->payment_class . '&no_lang=1',
+			'LMI_SUCCESS_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass=' . $pm_method->payment_class,
+			'LMI_FAILURE_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass=' . $pm_method->payment_class,
+			'SIGN'                         => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
 		];
 
 
-		foreach ($order->getAllItems() as $key => $product)
+		foreach ($order->getAllItems() as $product)
 		{
 			switch ($product->product_tax)
 			{
@@ -137,27 +139,36 @@ class pm_paymaster extends PaymentRoot
 					break;
 			}
 
-			$fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"]  = htmlspecialchars($product->product_name);
-			$fields["LMI_SHOPPINGCART.ITEM[{$key}].QTY"]   = $product->product_quantity;
-			$fields["LMI_SHOPPINGCART.ITEM[{$key}].PRICE"] = number_format($product->product_item_price, 2, '.', '');
-			$fields["LMI_SHOPPINGCART.ITEM[{$key}].TAX"]   = $tax;
+			$products[] = array(
+				'title' => $product->product_name,
+				'qty'   => $product->product_quantity,
+				'price' => $product->product_item_price,
+				'tax'   => $tax,
+			);
+
+
 		}
 
-
-		//Добавляем доставку в форму
-
+		//Добавляем доставку
 		if ($order->order_shipping > 0)
 		{
-			$key++;
-			if (isset($order->order_shipping) && ($order->order_shipping > 0))
-			{
-				$fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"]  = iconv("windows-1251", "utf-8", "Доставка заказа № " . $order->order_number);
-				$fields["LMI_SHOPPINGCART.ITEM[{$key}].QTY"]   = 1;
-				$fields["LMI_SHOPPINGCART.ITEM[{$key}].PRICE"] = number_format((float) $order->order_shipping, 2, '.', '');
-				$fields["LMI_SHOPPINGCART.ITEM[{$key}].TAX"]   = $pmconfigs['paymaster_vat_delivery'];
-			}
+			$products[] = array(
+				'title' => iconv("windows-1251", "utf-8", "Доставка заказа № " . $order->order_number),
+				'qty'   => 1,
+				'price' => number_format((float) $order->order_shipping, 2, '.', ''),
+				'tax'   => $pmconfigs['paymaster_vat_delivery'],
+			);
 		}
 
+		$products2 = orderCouponToDiscount($products, $order->order_total, $order->order_discount);
+
+		foreach ($products2 as $key=>$product)
+		{
+			$fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"]  = htmlspecialchars($product['title']);
+			$fields["LMI_SHOPPINGCART.ITEM[{$key}].QTY"]   = $product['qty'];
+			$fields["LMI_SHOPPINGCART.ITEM[{$key}].PRICE"] = $product['price'];
+			$fields["LMI_SHOPPINGCART.ITEM[{$key}].TAX"]   = $product['tax'];;
+		}
 
 		$form = '
     <form name="paymaster" method="POST" action="https://paymaster.ru/Payment/Init">' . PHP_EOL;
@@ -301,6 +312,48 @@ class pm_paymaster extends PaymentRoot
 		$hash = base64_encode(hash($hash_method, $string, true));
 
 		return $hash;
+	}
+
+
+	/**
+	 *
+	 * Большая функция, которая возвращает переделанный массив товаров с учатом купонной скидки
+	 *
+	 * @param array $products
+	 * @param       $orderAmountWithoutDiscount
+	 * @param int   $discountAmount
+	 *
+	 * @return array|mixed
+	 *
+	 * @since version
+	 */
+	public function orderCouponToDiscount($products = array(), $orderAmountWithDiscount, $discountAmount = 0)
+	{
+		$productsReturn = $products;
+
+		$orderAmountWithoutDiscount = 0;
+
+		foreach ($products as $product)
+		{
+			$orderAmountWithoutDiscount += $product['qty'] * $product['price'];
+		}
+
+		$orderAmountWithDiscountCalc = 0;
+
+		foreach ($products as $key => $product)
+		{
+			$productsReturn[$key]['price'] = number_format((ceil($product['price'] - $product['price'] / $product['qty'] * $discountAmount / $orderAmountWithoutDiscount)), 2, '.', '');
+
+			$orderAmountWithDiscountCalc += $productsReturn[$key]['price'];
+		}
+
+		if ($orderAmountWithDiscountCalc > $orderAmountWithDiscount)
+		{
+			$productsReturn[$key]['price'] = number_format(($productsReturn[$key]['price'] - ($orderAmountWithDiscountCalc - $orderAmountWithDiscount) / $productsReturn[$key]['qty']), 2, '.', '');
+		}
+
+		return $productsReturn;
+
 	}
 
 
