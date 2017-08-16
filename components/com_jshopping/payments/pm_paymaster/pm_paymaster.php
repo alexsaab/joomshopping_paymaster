@@ -160,9 +160,18 @@ class pm_paymaster extends PaymentRoot
 			);
 		}
 
-		$products2 = orderCouponToDiscount($products, $order->order_total, $order->order_discount);
 
-		foreach ($products2 as $key=>$product)
+		if (($order->order_discount) > 0)
+		{
+			$products2 = $this->orderCouponToDiscount($products, $order->order_total, $order->order_discount);
+		}
+		else
+		{
+			$products2 = $products;
+		}
+
+
+		foreach ($products2 as $key => $product)
 		{
 			$fields["LMI_SHOPPINGCART.ITEM[{$key}].NAME"]  = htmlspecialchars($product['title']);
 			$fields["LMI_SHOPPINGCART.ITEM[{$key}].QTY"]   = $product['qty'];
