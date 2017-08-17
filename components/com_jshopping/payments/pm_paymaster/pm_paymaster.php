@@ -150,15 +150,12 @@ class pm_paymaster extends PaymentRoot
 		}
 
 		//Добавляем доставку
-		if ($order->order_shipping > 0)
-		{
-			$products[] = array(
-				'title' => iconv("windows-1251", "utf-8", "Доставка заказа № " . $order->order_number),
-				'qty'   => 1,
-				'price' => number_format((float) $order->order_shipping, 2, '.', ''),
-				'tax'   => $pmconfigs['paymaster_vat_delivery'],
-			);
-		}
+		$products[] = array(
+			'title' => iconv("windows-1251", "utf-8", "Доставка заказа № " . $order->order_number),
+			'qty'   => 1,
+			'price' => number_format((float) $order->order_shipping, 2, '.', ''),
+			'tax'   => $pmconfigs['paymaster_vat_delivery'],
+		);
 
 
 		if (($order->order_discount) > 0)
@@ -186,7 +183,7 @@ class pm_paymaster extends PaymentRoot
 			$form .= '<input type="hidden" name="' . $key . '" value="' . $value . '">' . PHP_EOL;
 		}
 
-
+		
 		$form .= '</form>
     <script type="text/javascript">
       document.paymaster.submit();
@@ -351,10 +348,12 @@ class pm_paymaster extends PaymentRoot
 
 		foreach ($products as $key => $product)
 		{
-			$productsReturn[$key]['price'] = number_format((ceil($product['price'] - $product['price'] / $product['qty'] * $discountAmount / $orderAmountWithoutDiscount)), 2, '.', '');
+			$productsReturn[$key]['price'] = number_format(($product['price'] - $product['price'] * $discountAmount / $orderAmountWithoutDiscount), 2, '.', '');
 
-			$orderAmountWithDiscountCalc += $productsReturn[$key]['price'];
+
+			$orderAmountWithDiscountCalc += $productsReturn[$key]['price'] * $product['qty'];
 		}
+
 
 		if ($orderAmountWithDiscountCalc > $orderAmountWithDiscount)
 		{
