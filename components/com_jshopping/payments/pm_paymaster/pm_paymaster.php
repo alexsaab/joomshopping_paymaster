@@ -132,7 +132,7 @@ class pm_paymaster extends PaymentRoot
 					$tax = 'vat110';
 					break;
 				case 0:
-					$tax = 'vat0';
+					$tax = 'no_vat';
 					break;
 				default:
 					$tax = 'no_vat';
