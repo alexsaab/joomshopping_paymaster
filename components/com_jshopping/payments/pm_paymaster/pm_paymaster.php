@@ -213,7 +213,7 @@ class pm_paymaster extends PaymentRoot
 
 				$hash = $this->paymaster_get_hash($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_SYS_PAYMENT_DATE"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $_POST["LMI_PAYMENT_SYSTEM"], $_POST["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
 
-				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SING"] == $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method'])))
+				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SIGN"] == $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method'])))
 				{
 					return array(1, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 				}
