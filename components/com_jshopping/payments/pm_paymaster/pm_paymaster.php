@@ -107,15 +107,15 @@ class pm_paymaster extends PaymentRoot
 		$amount = number_format((float) $order->order_total, 2, '.', '');
 
 		$fields = [
-			'LMI_PAYMENT_AMOUNT' => $amount,
-			'LMI_PAYMENT_DESC'   => $pmconfigs['paymaster_payment_detail'] . $order->order_number,
-			'LMI_PAYMENT_NO'     => $order->order_number,
-			'LMI_MERCHANT_ID'    => $pmconfigs['paymaster_merchant_id'],
-			'LMI_CURRENCY'       => $order->currency_code_iso,
-            'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass='.$pm_method->payment_class.'&no_lang=1',
-            'LMI_SUCCESS_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass='.$pm_method->payment_class,
-            'LMI_FAILURE_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass='.$pm_method->payment_class,
-			'SIGN'               => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
+			'LMI_PAYMENT_AMOUNT'           => $amount,
+			'LMI_PAYMENT_DESC'             => $pmconfigs['paymaster_payment_detail'] . $order->order_number,
+			'LMI_PAYMENT_NO'               => $order->order_number,
+			'LMI_MERCHANT_ID'              => $pmconfigs['paymaster_merchant_id'],
+			'LMI_CURRENCY'                 => $order->currency_code_iso,
+			'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass=' . $pm_method->payment_class . '&no_lang=1',
+			'LMI_SUCCESS_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass=' . $pm_method->payment_class,
+			'LMI_FAILURE_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass=' . $pm_method->payment_class,
+			'SIGN'                         => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
 		];
 
 
@@ -211,9 +211,9 @@ class pm_paymaster extends PaymentRoot
 					'ORDER_ID'             => $order->order_id,
 					'ORDER_NUMBER'         => $order->order_number);
 
-				$hash = paymaster_get_hash($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_SYS_PAYMENT_DATE"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $_POST["LMI_PAYMENT_SYSTEM"], $_POST["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
+				$hash = $this->paymaster_get_hash($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_SYS_PAYMENT_DATE"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $_POST["LMI_PAYMENT_SYSTEM"], $_POST["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
 
-				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SING"] == paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method'])))
+				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SING"] == $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method'])))
 				{
 					return array(1, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 				}
