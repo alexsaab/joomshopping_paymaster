@@ -183,6 +183,7 @@ class pm_paymaster extends PaymentRoot
 			$form .= '<input type="hidden" name="' . $key . '" value="' . $value . '">' . PHP_EOL;
 		}
 
+
 		
 		$form .= '</form>
     <script type="text/javascript">
@@ -228,9 +229,12 @@ class pm_paymaster extends PaymentRoot
 					'ORDER_ID'             => $order->order_id,
 					'ORDER_NUMBER'         => $order->order_number);
 
-				$hash = $this->paymaster_get_hash($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_SYS_PAYMENT_DATE"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $_POST["LMI_PAYMENT_SYSTEM"], $_POST["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
+				$hash = $this->paymaster_get_hash($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_SYS_PAYMENT_ID"], $_POST["LMI_SYS_PAYMENT_DATE"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $_POST["LMI_PAYMENT_SYSTEM"], $_POST["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
 
-				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SIGN"] == $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method'])))
+				$sign = $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
+
+
+				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SIGN"] == $sign))
 				{
 					return array(1, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 				}
@@ -377,7 +381,14 @@ class pm_paymaster extends PaymentRoot
 	public function logF($text)
 	{
 		$f = fopen(JPATH_ROOT . "/components/com_jshopping/log/payment.log", "a+");
-		fwrite($f, date('Y-m-d H:i:s') . " " . $text . "\r\n");
+		if (is_array($text)) {
+			foreach ($text as $key=>$value) {
+				fwrite($f, date('Y-m-d H:i:s') . " '{$key}' => '{$value}'\r\n");
+			}
+		}
+		else {
+			fwrite($f, date('Y-m-d H:i:s') . " " . $text . "\r\n");
+		}
 		fclose($f);
 	}
 
