@@ -104,6 +104,7 @@ class pm_paymaster extends PaymentRoot
 
 		$pm_method = $this->getPmMethod();
 
+
 		$url = (((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
 
 		$amount = number_format((float) $order->order_total, 2, '.', '');
@@ -114,9 +115,9 @@ class pm_paymaster extends PaymentRoot
 			'LMI_PAYMENT_NO'               => $order->order_number,
 			'LMI_MERCHANT_ID'              => $pmconfigs['paymaster_merchant_id'],
 			'LMI_CURRENCY'                 => $order->currency_code_iso,
-			'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass=' . $pm_method->payment_class . '&no_lang=1',
-			'LMI_SUCCESS_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass=' . $pm_method->payment_class,
-			'LMI_FAILURE_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass=' . $pm_method->payment_class,
+//			'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=result&js_paymentclass=' . $pm_method->payment_class . '&no_lang=1&order_id=' . $order->order_id,
+//			'LMI_SUCCESS_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=success&js_paymentclass=' . $pm_method->payment_class . '&order_id=' . $order->order_id,
+//			'LMI_FAILURE_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=fail&js_paymentclass=' . $pm_method->payment_class . '&order_id=' . $order->order_id,
 			'SIGN'                         => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
 		];
 
@@ -184,12 +185,16 @@ class pm_paymaster extends PaymentRoot
 		}
 
 
-		
 		$form .= '</form>
     <script type="text/javascript">
       document.paymaster.submit();
     </script>
     ';
+
+
+//		$form .= '</form>';
+
+		saveToLog("payment.log", "TEST1");
 
 		echo $form;
 		die;
@@ -206,10 +211,12 @@ class pm_paymaster extends PaymentRoot
 	 */
 	function checkTransaction($pmconfigs, $order, $act)
 	{
+		$jshopConfig = JSFactory::getConfig(O);
 
-		if ($_SERVER["REQUEST_METHOD"] == "POST" && $act == 'notify')
+		saveToLog("paymentdata.log", "TEST2");
+
+		if ($_SERVER["REQUEST_METHOD"] == "POST" && $act == 'result')
 		{
-
 			if (isset($_POST["LMI_PREREQUEST"]) && ($_POST["LMI_PREREQUEST"] == "1" || $_POST["LMI_PREREQUEST"] == "2"))
 			{
 				echo "YES";
@@ -236,6 +243,7 @@ class pm_paymaster extends PaymentRoot
 
 				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SIGN"] == $sign))
 				{
+					$this->finishOrder($order, $pmconfigs['transaction_end_status']);
 					return array(1, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 				}
 			}
@@ -248,8 +256,9 @@ class pm_paymaster extends PaymentRoot
 		}
 		else
 		{
-			if ($act == 'cancel')
+			if ($act == 'fail')
 			{
+				$this->finishOrder($order, $pmconfigs['transaction_fail_status']);
 				return array(0, 'Payment for order #' . $order->order_number . ' was canceled', $transaction, $transactiondata);
 			}
 		}
@@ -369,6 +378,40 @@ class pm_paymaster extends PaymentRoot
 	}
 
 
+	private function finishOrder($order, $endStatus)
+	{
+		$act            = 'finish';
+		$payment_method = 'pm_yandexmoney';
+		$no_lang        = '1';
+
+
+		$checkout = JSFactory::getModel('checkoutBuy', 'jshop');
+		$checkout->saveToLogPaymentData();
+		$checkout->setSendEndForm(0);
+		$checkout->setAct($act);
+		$checkout->setPaymentMethodClass($payment_method);
+		$checkout->setNoLang($no_lang);
+		$checkout->loadUrlParams();
+		$checkout->setOrderId($order->order_id);
+		$codebuy = $checkout->buy();
+		if ($codebuy == 0)
+		{
+			JError::raiseWarning('', $checkout->getError());
+
+			return 0;
+		}
+		/** @var jshopCheckoutFinish $checkout */
+		$checkout = JSFactory::getModel('checkoutFinish', 'jshop');
+		$order_id = $checkout->getEndOrderId();
+		$text     = $checkout->getFinishStaticText();
+		if ($order_id)
+		{
+			$checkout->paymentComplete($order_id, $text);
+		}
+		$checkout->clearAllDataCheckout();
+	}
+
+
 	/**
 	 * Логирование в файл для отладки, на дурацкой настройке Joomla тут ничего не
 	 * работало
@@ -380,13 +423,17 @@ class pm_paymaster extends PaymentRoot
 	 */
 	public function logF($text)
 	{
-		$f = fopen(JPATH_ROOT . "/components/com_jshopping/log/payment.log", "a+");
-		if (is_array($text)) {
-			foreach ($text as $key=>$value) {
+		$f = fopen(__DIR__ . "/payment.log", "a+");
+
+		if (is_array($text))
+		{
+			foreach ($text as $key => $value)
+			{
 				fwrite($f, date('Y-m-d H:i:s') . " '{$key}' => '{$value}'\r\n");
 			}
 		}
-		else {
+		else
+		{
 			fwrite($f, date('Y-m-d H:i:s') . " " . $text . "\r\n");
 		}
 		fclose($f);
