@@ -215,12 +215,14 @@ class pm_paymaster extends PaymentRoot
 
 				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SIGN"] == $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method'])))
 				{
+					$this->finishOrder($order, $pmconfigs['transaction_end_status']);
 					return array(1, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 				}
 			}
 		}
 
-		if ($act == 'success' && $pmconfigs['transaction_end_status'] == $order->order_status)
+
+		if ($act == 'return' && $pmconfigs['transaction_end_status'] == $order->order_status)
 		{
 
 			return array(2, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
@@ -318,6 +320,49 @@ class pm_paymaster extends PaymentRoot
 		$f = fopen(JPATH_ROOT . "/components/com_jshopping/log/payment.log", "a+");
 		fwrite($f, date('Y-m-d H:i:s') . " " . $text . "\r\n");
 		fclose($f);
+	}
+
+
+	/**
+	 * @param $order
+	 * @param $endStatus
+	 *
+	 * @return int
+	 *
+	 * @since version
+	 */
+	private function finishOrder($order, $endStatus)
+	{
+		$act            = 'finish';
+		$payment_method = 'pm_yandexmoney';
+		$no_lang        = '1';
+
+		// joomla 3.x order finish
+		/** @var jshopCheckoutBuy $checkout */
+		$checkout = JSFactory::getModel('checkoutBuy', 'jshop');
+		$checkout->saveToLogPaymentData();
+		$checkout->setSendEndForm(0);
+		$checkout->setAct($act);
+		$checkout->setPaymentMethodClass($payment_method);
+		$checkout->setNoLang($no_lang);
+		$checkout->loadUrlParams();
+		$checkout->setOrderId($order->order_id);
+		$codebuy = $checkout->buy();
+		if ($codebuy == 0)
+		{
+			JError::raiseWarning('', $checkout->getError());
+
+			return 0;
+		}
+		/** @var jshopCheckoutFinish $checkout */
+		$checkout = JSFactory::getModel('checkoutFinish', 'jshop');
+		$order_id = $checkout->getEndOrderId();
+		$text     = $checkout->getFinishStaticText();
+		if ($order_id)
+		{
+			$checkout->paymentComplete($order_id, $text);
+		}
+		$checkout->clearAllDataCheckout();
 	}
 
 }
