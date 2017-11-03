@@ -85,8 +85,3 @@ defined('_JEXEC') or die();
     </fieldset>
 </div>
 <div class="clr"></div>
-
-
-<?php
-saveToLog("payment.log", "TEST 25");
-?>

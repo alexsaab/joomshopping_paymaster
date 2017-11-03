@@ -60,9 +60,9 @@ class pm_paymaster extends PaymentRoot
 			}
 		}
 
-		$orders = JModelLegacy::getInstance('orders', 'JshoppingModel');
-
 		$this->loadLanguageFile(); //подключаем нужный язык
+
+		$orders = JModelLegacy::getInstance('orders', 'JshoppingModel'); // нужно не убирать
 
 		include(dirname(__FILE__) . '/adminparamsform.php');
 	}
@@ -92,6 +92,18 @@ class pm_paymaster extends PaymentRoot
 
 
 	/**
+	 * @param $pmconfigs
+	 * @param $order
+	 * @param $rescode
+	 *
+	 *
+	 * @since version
+	 */
+	function nofityFinish($pmconfigs, $order, $rescode) {
+		saveToLog("paymentdata.log", "HASH!!! TEST: ");
+	}
+
+	/**
 	 * Генерация запроса на оплату
 	 *
 	 * @param $pmconfigs
@@ -115,9 +127,9 @@ class pm_paymaster extends PaymentRoot
 			'LMI_PAYMENT_NO'               => $order->order_number,
 			'LMI_MERCHANT_ID'              => $pmconfigs['paymaster_merchant_id'],
 			'LMI_CURRENCY'                 => $order->currency_code_iso,
-//			'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=result&js_paymentclass=' . $pm_method->payment_class . '&no_lang=1&order_id=' . $order->order_id,
-//			'LMI_SUCCESS_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=success&js_paymentclass=' . $pm_method->payment_class . '&order_id=' . $order->order_id,
-//			'LMI_FAILURE_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=fail&js_paymentclass=' . $pm_method->payment_class . '&order_id=' . $order->order_id,
+			'LMI_PAYMENT_NOTIFICATION_URL' => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=notify&js_paymentclass=' . $pm_method->payment_class . '&no_lang=1&order_id=' . $order->order_id,
+			'LMI_SUCCESS_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=return&js_paymentclass=' . $pm_method->payment_class . '&order_id=' . $order->order_id,
+			'LMI_FAILURE_URL'              => $url . '/index.php?option=com_jshopping&controller=checkout&task=step7&act=cancel&js_paymentclass=' . $pm_method->payment_class . '&order_id=' . $order->order_id,
 			'SIGN'                         => $this->paymaster_get_sign($pmconfigs['paymaster_merchant_id'], $order->order_number, $amount, $order->currency_code_iso, $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']),
 		];
 
@@ -194,8 +206,6 @@ class pm_paymaster extends PaymentRoot
 
 //		$form .= '</form>';
 
-		saveToLog("payment.log", "TEST1");
-
 		echo $form;
 		die;
 	}
@@ -213,52 +223,58 @@ class pm_paymaster extends PaymentRoot
 	{
 		$jshopConfig = JSFactory::getConfig(O);
 
-		saveToLog("paymentdata.log", "TEST2");
+		$callbackParams = JRequest::get('post');
 
-		if ($_SERVER["REQUEST_METHOD"] == "POST" && $act == 'result')
+		saveToLog("paymentdata.log", "HASH!!! TEST: ");
+
+		if ($_SERVER["REQUEST_METHOD"] == "POST" && $act == 'notify')
 		{
-			if (isset($_POST["LMI_PREREQUEST"]) && ($_POST["LMI_PREREQUEST"] == "1" || $_POST["LMI_PREREQUEST"] == "2"))
+			if (isset($callbackParams["LMI_PREREQUEST"]) && ($callbackParams["LMI_PREREQUEST"] == "1" || $callbackParams["LMI_PREREQUEST"] == "2"))
 			{
 				echo "YES";
 				die;
 			}
 			else
 			{
-				$transaction     = $_POST["LMI_SYS_PAYMENT_ID"];
+				$transaction     = $callbackParams["LMI_SYS_PAYMENT_ID"];
 				$transactiondata = array(
-					'LMI_SYS_PAYMENT_ID'   => $_POST['LMI_SYS_PAYMENT_ID'],
-					'LMI_PAYMENT_NO'       => $_POST['LMI_PAYMENT_NO'],
-					'LMI_SYS_PAYMENT_DATE' => $_POST['LMI_SYS_PAYMENT_DATE'],
-					'LMI_CURRENCY'         => $_POST['LMI_CURRENCY'],
-					'LMI_PAID_AMOUNT'      => $_POST['LMI_PAID_AMOUNT'],
-					'LMI_PAYMENT_SYSTEM'   => $_POST['LMI_PAYMENT_SYSTEM'],
-					'LMI_SIM_MODE'         => $_POST['LMI_PAYMENT_SYLMI_SIM_MODESTEM'],
+					'LMI_SYS_PAYMENT_ID'   => $callbackParams['LMI_SYS_PAYMENT_ID'],
+					'LMI_PAYMENT_NO'       => $callbackParams['LMI_PAYMENT_NO'],
+					'LMI_SYS_PAYMENT_DATE' => $callbackParams['LMI_SYS_PAYMENT_DATE'],
+					'LMI_CURRENCY'         => $callbackParams['LMI_CURRENCY'],
+					'LMI_PAID_AMOUNT'      => $callbackParams['LMI_PAID_AMOUNT'],
+					'LMI_PAYMENT_SYSTEM'   => $callbackParams['LMI_PAYMENT_SYSTEM'],
+					'LMI_SIM_MODE'         => $callbackParams['LMI_PAYMENT_SYLMI_SIM_MODESTEM'],
 					'ORDER_ID'             => $order->order_id,
 					'ORDER_NUMBER'         => $order->order_number);
 
-				$hash = $this->paymaster_get_hash($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_SYS_PAYMENT_ID"], $_POST["LMI_SYS_PAYMENT_DATE"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $_POST["LMI_PAID_AMOUNT"], $_POST["LMI_PAID_CURRENCY"], $_POST["LMI_PAYMENT_SYSTEM"], $_POST["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
+				$hash = $this->paymaster_get_hash($callbackParams["LMI_MERCHANT_ID"], $callbackParams["LMI_PAYMENT_NO"], $callbackParams["LMI_SYS_PAYMENT_ID"], $callbackParams["LMI_SYS_PAYMENT_DATE"], $callbackParams["LMI_PAYMENT_AMOUNT"], $callbackParams["LMI_CURRENCY"], $callbackParams["LMI_PAID_AMOUNT"], $callbackParams["LMI_PAID_CURRENCY"], $callbackParams["LMI_PAYMENT_SYSTEM"], $callbackParams["LMI_SIM_MODE"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
 
-				$sign = $this->paymaster_get_sign($_POST["LMI_MERCHANT_ID"], $_POST["LMI_PAYMENT_NO"], $_POST["LMI_PAYMENT_AMOUNT"], $_POST["LMI_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
+				saveToLog("paymentdata.log", "HASH: ".$hash);
 
+				$sign = $this->paymaster_get_sign($callbackParams["LMI_MERCHANT_ID"], $callbackParams["LMI_PAYMENT_NO"], $callbackParams["LMI_PAYMENT_AMOUNT"], $callbackParams["LMI_CURRENCY"], $pmconfigs['paymaster_secret_key'], $pmconfigs['paymaster_sign_method']);
 
-				if (($_POST["LMI_HASH"] == $hash) && ($_POST["SIGN"] == $sign))
+				saveToLog("paymentdata.log", "SIGN: ".$sign);
+
+				if (($callbackParams["LMI_HASH"] == $hash) && ($callbackParams["SIGN"] == $sign))
 				{
-					$this->finishOrder($order, $pmconfigs['transaction_end_status']);
+					$this->finishOrder($order);
 					return array(1, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 				}
 			}
 		}
 
-		if ($act == 'success' && $pmconfigs['transaction_end_status'] == $order->order_status)
+		if ($act == 'return' && $pmconfigs['transaction_end_status'] == $order->order_status)
 		{
+			$this->finishOrder($order);
 
 			return array(2, 'Payment for order #' . $order->order_number . ' was received', $transaction, $transactiondata);
 		}
 		else
 		{
-			if ($act == 'fail')
+			if ($act == 'cancel')
 			{
-				$this->finishOrder($order, $pmconfigs['transaction_fail_status']);
+				$this->finishOrder($order);
 				return array(0, 'Payment for order #' . $order->order_number . ' was canceled', $transaction, $transactiondata);
 			}
 		}
@@ -378,10 +394,19 @@ class pm_paymaster extends PaymentRoot
 	}
 
 
-	private function finishOrder($order, $endStatus)
+	/**
+	 * Завершаем заказ пренудительно
+	 * @param $order
+	 * @param $endStatus
+	 *
+	 * @return int
+	 *
+	 * @since version
+	 */
+	public function finishOrder($order)
 	{
 		$act            = 'finish';
-		$payment_method = 'pm_yandexmoney';
+		$payment_method = 'pm_paymaster';
 		$no_lang        = '1';
 
 
